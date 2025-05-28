@@ -3,6 +3,6 @@ gspread
 oauth2client
 pandas
 numpy
-googleapiclient
+google-api-python-client
 io
 requests
