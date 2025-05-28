@@ -1,8 +1,6 @@
-streamlit
+streamlit==1.45.1
 gspread
 oauth2client
 pandas
-numpy
 google-api-python-client
-io
 requests
