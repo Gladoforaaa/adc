@@ -2,7 +2,7 @@ import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
-import pytz  # You can add this to requirements.txt
+import pytz
 import pandas as pd
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
@@ -11,12 +11,22 @@ import io
 # --- Configs ---
 st.set_page_config(page_title="Our Love Story", layout="centered")
 
-# Your Google Sheet ID and Drive folder ID
 SHEET_ID = "1OtTJoIwh-3HRXgSW5GwdY4DfaYg8NaLVcxnfnEwQCNw"
 DRIVE_FOLDER_ID = "1xf1TWo28QhwUE678fCo3SxWTWqBZKCfw"
-
-# Use UTC timezone for all timestamps (or change to your desired tz)
 UTC = pytz.utc
+
+def get_gsheet_client():
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.appdata"
+    ]
+    creds_dict = dict(st.secrets["google"])
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    client = gspread.authorize(creds)
+    return client, creds  # Return both the authorized gspread client and creds
 
 def get_messages(sheet_id, sheet_name="Sheet1"):
     try:
@@ -32,30 +42,14 @@ def add_message(sheet_id, name, message, sheet_name="Sheet1"):
     try:
         sheet_client, _ = get_gsheet_client()
         worksheet = sheet_client.open_by_key(sheet_id).worksheet(sheet_name)
-        # Use timezone-aware UTC timestamp
         timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
         worksheet.append_row([name, message, timestamp])
         st.success("Your message was sent! 💌")
     except Exception as e:
         st.error(f"Could not send message: {e}")
 
-def get_gsheet_client():
-    scope = [
-        "https://spreadsheets.google.com/feeds",
-        "https://www.googleapis.com/auth/drive",
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive.file",
-        "https://www.googleapis.com/auth/drive.appdata"
-    ]
-    import json
-    creds_dict = dict(st.secrets["google"])
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-
-    return creds
-
 def get_drive_service(creds):
-    service = build('drive', 'v3', credentials=creds)
-    return service
+    return build('drive', 'v3', credentials=creds)
 
 def upload_file_to_drive(service, file_bytes, filename, mimetype):
     file_metadata = {
@@ -71,7 +65,6 @@ def upload_file_to_drive(service, file_bytes, filename, mimetype):
     }
     service.permissions().create(fileId=file['id'], body=permission).execute()
 
-    # Use the file ID directly, no strip needed
     return f"https://drive.google.com/uc?export=view&id={file['id']}"
 
 def add_photo_record(sheet_client, sheet_id, url, date, time, description, sheet_name="Photos"):
@@ -113,7 +106,7 @@ with tab1:
 
     if st.button("Send"):
         if name and message:
-            add_message(SHEET_ID, name, message)  # pass message here!
+            add_message(SHEET_ID, name, message)
         else:
             st.warning("Please enter both name and message!")
 
@@ -167,13 +160,11 @@ with tab3:
         if df_photos.empty:
             st.info("No photos uploaded yet.")
         else:
-            # Create datetime column for sorting; assume date & time are in ISO format
             df_photos['datetime'] = pd.to_datetime(df_photos['date'] + ' ' + df_photos['time'])
             df_photos = df_photos.sort_values(by='datetime', ascending=False)
 
             for _, row in df_photos.iterrows():
                 st.markdown(f"**{row['date']} {row['time']}**")
-                # Use st.image with URL directly (no requests needed)
                 st.image(row['image_url'], use_container_width=True)
                 st.write(row['description'])
                 st.markdown("---")
