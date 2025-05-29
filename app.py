@@ -154,19 +154,31 @@ with tab2:
 
 with tab3:
     st.subheader("Timeline of Photos")
+
     try:
         sheet_client, _ = get_gsheet_client()
         df_photos = get_photos(sheet_client, SHEET_ID)
         if df_photos.empty:
             st.info("No photos uploaded yet.")
         else:
+            # Sort by date & time descending
             df_photos['datetime'] = pd.to_datetime(df_photos['date'] + ' ' + df_photos['time'])
             df_photos = df_photos.sort_values(by='datetime', ascending=False)
 
             for _, row in df_photos.iterrows():
                 st.markdown(f"**{row['date']} {row['time']}**")
-                st.image(row['image_url'], use_container_width=True)
+
+                try:
+                    response = requests.get(row['image_url'])
+                    if response.status_code == 200:
+                        st.image(response.content, use_container_width=True)
+                    else:
+                        st.error("Failed to load image from Drive.")
+                except Exception as e:
+                    st.error(f"Error loading image: {e}")
+
                 st.write(row['description'])
                 st.markdown("---")
+
     except Exception as e:
         st.error(f"Could not load timeline: {e}")
