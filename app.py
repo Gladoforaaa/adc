@@ -7,7 +7,7 @@ import pandas as pd
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 import io
-
+import requests
 # --- Configs ---
 st.set_page_config(page_title="Our Love Story", layout="centered")
 
